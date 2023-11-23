@@ -9,7 +9,7 @@ pip3 install -r requirements.txt
 echo "installing service..."
 cat >$systemd_service << EOF
 [Unit]
-Description=Nahida Picbot for telegram channel
+Description=0721 Bot (* /ω＼*)
 After=network.target
 
 [Install]

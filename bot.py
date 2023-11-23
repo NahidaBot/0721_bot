@@ -80,7 +80,7 @@ async def get_origin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
 
 async def ping(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text("online! ヾ(✿ﾟ▽ﾟ)ノ")
+    await update.message.reply_text("online! (* /ω＼*)")
 
 
 async def set_commands(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
