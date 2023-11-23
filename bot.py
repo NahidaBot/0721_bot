@@ -5,11 +5,13 @@ import subprocess
 
 from config import config
 
-from telegram import Update, BotCommand, InputMediaDocument
+from telegram import Update, BotCommand, InputMediaDocument, Message
 from telegram.ext import (
     Application,
     CommandHandler,
     ContextTypes,
+    MessageHandler,
+    filters,
 )
 from telegram.constants import ParseMode
 
@@ -31,11 +33,19 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 async def get_origin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     msg = update.message
+    # 如果是自动转发的
+    if msg.from_user.id == 777000:
+        return await reply_origin_pic(msg)
+    await reply_origin_pic(update.message.reply_to_message)
+    # 如果不是由自动转发触发的（使用 /get_origin 命令手动触发），则删除原消息
+    await update.message.delete(read_timeout=20)
+
+
+async def reply_origin_pic(channel_msg: Message):
     try:
         urls: list[str] = []
-        reply_to_message = msg.reply_to_message
-        for entity in reply_to_message.caption_entities:
-            caption: str = reply_to_message.caption
+        for entity in channel_msg.caption_entities:
+            caption: str = channel_msg.caption
             if entity.type == "text_link":
                 urls.append(entity.url)
             if entity.type == "url":
@@ -43,10 +53,10 @@ async def get_origin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
                 urls.append(url)
     except Exception as e:
         logger.error(e)
-        return await msg.reply_text(
+        return await channel_msg.reply_text(
             f"获取失败，请在对应消息的评论区回复该命令：`/get_origin`", parse_mode=ParseMode.MARKDOWN_V2
         )
-    url = urls[0] # 只取第一个 url
+    url = urls[0]  # 只取第一个 url
     try:
         # 要执行的命令, 包括 gallery-dl 命令和要下载的图库URL
         command = ["gallery-dl", url, "-j", "-q"]
@@ -63,20 +73,17 @@ async def get_origin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         logger.debug("获取完成！")
     except subprocess.CalledProcessError as e:
         logger.error("获取出错:" + e)
-        return await msg.reply_text("获取失败，请查看日志")
+        return await channel_msg.reply_text("获取失败，请查看日志")
     tweet_json: list[list] = json.loads(result.stdout)
     if len(tweet_json) <= 1:
-        return await msg.reply_text("推文中没有获取到图片")
-    await update.message.reply_chat_action("upload_document")
+        return await channel_msg.reply_text("推文中没有获取到图片")
+    await channel_msg.reply_chat_action("upload_document")
     media_group = []
     for image in tweet_json:
         if image[0] == 3:
             media_group.append(InputMediaDocument(image[1]))
 
-    await update.message.reply_to_message.reply_media_group(
-        media_group, write_timeout=60, read_timeout=20
-    )
-    await update.message.delete(read_timeout=20)
+    await channel_msg.reply_media_group(media_group, write_timeout=60, read_timeout=20)
 
 
 async def ping(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -110,6 +117,14 @@ def main() -> None:
     application.add_handler(CommandHandler("set_commands", set_commands))
     application.add_handler(CommandHandler("ping", ping))
     application.add_handler(CommandHandler("get_origin", get_origin))
+    application.add_handler(
+        MessageHandler(
+            filters.FORWARDED
+            & filters.PHOTO 
+            & filters.User(777000),
+            get_origin,
+        )
+    )
 
     # Run the bot until the user presses Ctrl-C
     application.run_polling(allowed_updates=Update.ALL_TYPES)
