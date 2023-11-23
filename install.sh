@@ -27,7 +27,7 @@ echo "copying configure file.."
 cp .env.example .env
 
 echo "Please input your telegram bot token: "
-read $bot_token
+read bot_token
 sed -i "s/bot_token_here/$bot_token/" ./.env
 
 echo "service starting"
