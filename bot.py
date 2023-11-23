@@ -1,3 +1,4 @@
+import sys
 import json
 import logging
 import datetime
@@ -101,7 +102,8 @@ async def set_commands(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     await update.message.reply_text(str(r))
 
 async def restart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    raise SystemExit
+    await update.message.reply_text("exiting...")
+    application.stop_running()
 
 def main() -> None:
     """Start the bot."""
