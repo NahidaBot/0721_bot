@@ -100,6 +100,8 @@ async def set_commands(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     r = await context.bot.set_my_commands(commands)
     await update.message.reply_text(str(r))
 
+async def restart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    raise SystemExit
 
 def main() -> None:
     """Start the bot."""
@@ -116,6 +118,7 @@ def main() -> None:
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("set_commands", set_commands))
     application.add_handler(CommandHandler("ping", ping))
+    application.add_handler(CommandHandler("restart", restart))
     application.add_handler(CommandHandler("get_origin", get_origin))
     application.add_handler(
         MessageHandler(
