@@ -1,6 +1,6 @@
 #!/bin/bash
 DIR=$(pwd)
-name = nenebot.service
+name=nenebot.service
 systemd_service=/etc/systemd/system/$name
 
 echo "service stopping"
