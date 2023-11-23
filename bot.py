@@ -107,6 +107,7 @@ def main() -> None:
     # on different commands - answer in Telegram
     application.add_handler(CommandHandler("start", help_command))
     application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("set_commands", set_commands))
     application.add_handler(CommandHandler("ping", ping))
     application.add_handler(CommandHandler("get_origin", get_origin))
 
