@@ -1,8 +1,9 @@
-import sys
+import os
 import json
 import logging
 import datetime
 import subprocess
+from typing import Optional
 
 from config import config
 
@@ -17,6 +18,7 @@ from telegram.ext import (
 from telegram.constants import ParseMode
 
 logger = logging.getLogger(__name__)
+restart_data = os.path.join(os.getcwd(), "restart.json")
 
 if config.debug:
     logging.basicConfig(
@@ -101,15 +103,56 @@ async def set_commands(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     r = await context.bot.set_my_commands(commands)
     await update.message.reply_text(str(r))
 
-async def restart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text("exiting...")
+
+async def restart(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str = None) -> None:
+    if not text:
+        text: str = "Exiting..."
+    msg = await update.message.reply_text(text)
+    with open(restart_data, "w", encoding="utf-8") as f:
+        f.write(msg.to_json())
     application.stop_running()
+
+
+async def restore_from_restart() -> None:
+    if os.path.exists(restart_data):
+        with open(restart_data) as f:
+            msg: Message = Message.de_json(json.load(f), bot)
+            await msg.edit_text("Restart success")
+        os.remove(restart_data)
+
+
+async def update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    try:
+        # 要执行的命令, 包括 gallery-dl 命令和要下载的图库URL
+        command = ["git", "pull"]
+
+        # 使用subprocess执行命令
+        result: subprocess.CompletedProcess = subprocess.run(
+            command,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        logger.debug(result.stdout)
+        logger.debug("更新成功！")
+    except subprocess.CalledProcessError as e:
+        logger.error("更新出错:" + e)
+        return await update.message.reply_text("Update failed! Please check logs.")
+    await restart(update, context, "Update success, restarting...")
+
+# async init func
+async def on_start(application: Application):
+    await restore_from_restart()
+
 
 def main() -> None:
     """Start the bot."""
     # Create the Application and pass it your bot's token.
     global application
-    application = Application.builder().token(config.bot_token).build()
+    application = (
+        Application.builder().token(config.bot_token).post_init(on_start).build()
+    )
 
     global bot
     bot = application.bot
@@ -121,12 +164,11 @@ def main() -> None:
     application.add_handler(CommandHandler("set_commands", set_commands))
     application.add_handler(CommandHandler("ping", ping))
     application.add_handler(CommandHandler("restart", restart))
+    application.add_handler(CommandHandler("update", update))
     application.add_handler(CommandHandler("get_origin", get_origin))
     application.add_handler(
         MessageHandler(
-            filters.FORWARDED
-            & filters.PHOTO 
-            & filters.User(777000),
+            filters.FORWARDED & filters.PHOTO & filters.User(777000),
             get_origin,
         )
     )
